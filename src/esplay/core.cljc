@@ -75,7 +75,9 @@
 (defn find-updated-aggregates [old new]
   (-> old
       (diff new)
-      second))
+      second
+      (->> (filter identity))
+      vec))
 
 (defn all-keys-from [xs]
   (log/debug :all-keys-from {:xs xs})

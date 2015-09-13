@@ -123,7 +123,29 @@
 
 (deftest test-all-keys-from
   (testing "no xs"
-    (is (= #{} (all-keys-from nil))))
+    (is (= #{}
+           (all-keys-from nil))))
 
   (testing "no keys"
-    (is (= #{} (all-keys-from [{} {} {}])))))
+    (is (= #{}
+           (all-keys-from [{} {} {}])))))
+
+(deftest test-find-updated-aggregates
+  (testing "no aggregates"
+    (let [aggs []]
+      (is (= []
+             (find-updated-aggregates aggs aggs)))))
+
+  (testing "no new aggregates"
+    (let [aggs [{:foo :bar}]]
+      (is (= []
+             (find-updated-aggregates aggs aggs)))))
+
+  (testing "new aggregates"
+    (let [old [{:foo :bar}]
+          new [{:foo :bar}
+               {:baz :bif}
+               {:bam :boom}]]
+      (is (= [{:baz :bif}
+              {:bam :boom}]
+             (find-updated-aggregates old new))))))
