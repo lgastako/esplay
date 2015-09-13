@@ -149,3 +149,34 @@
       (is (= [{:baz :bif}
               {:bam :boom}]
              (find-updated-aggregates old new))))))
+
+(deftest test-search
+  (testing "zero kvs"
+    (let [store (create-store)]
+      (is (thrown? AssertionError (search store)))))
+
+  (testing "odd number of kvs"
+    (let [store (create-store)]
+      (is (thrown? AssertionError (search store)))))
+
+  (testing "a single kv with no results"
+    (let [store (create-store)]
+      (is (= :fixme
+             (search store
+                     :username "john")))))
+
+  (testing "a single kv with results"
+    (let [store (create-store)]
+      (swap! store assoc :aggregates {"john" {:username "john"}})
+      (update-indexes nil store {} @store)
+      (is (= :fixme
+             (search store
+                     :username "john")))))
+
+  (testing "multiple kvs with no results"
+    (let [store (create-store)]
+      (is (= nil (search store
+                         :username "john"
+                         :something "else")))))
+
+  (testing "multiple kvs with results"))

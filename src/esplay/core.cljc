@@ -114,7 +114,10 @@
 (defn add-projection [store projection]
   (swap! store update-in [:projections] conj projection))
 
-(defn search-index [index])
+(defn search-index [indexes query]
+  (log/debug :search-index {:indexes indexes
+                            :query query})
+  nil)
 
 (defn search [store & kvs]
   (log/debug :search {:store store
@@ -123,7 +126,12 @@
     (assert (even? nkvs))
     (assert (> nkvs 0)))
   (let [f (partial search-index (:indexes store))]
-    (->> [(vec kvs)]
-         (into {})
-         (map f)
-         intersection)))
+    (log/debug :vec-kvs1 [(vec kvs)])
+    (log/debug :vec-kvs2 (into {} [(vec kvs)]))
+    (log/debug :vec-kvs2 (map f (into {} [(vec kvs)])))
+    ;;   (->> [(vec kvs)]
+    ;;        (apply into {})
+    ;;        (map f)
+    ;;        intersection)
+    )
+  nil)

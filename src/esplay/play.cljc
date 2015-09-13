@@ -16,6 +16,7 @@
                (let [current-events (or (get-in ref [:aggregates key]) 0)]
                  (assoc-in ref :aggregates key (inc current-events))))))))
 
+#_
 (es/add-projection event-store
                    (fn [store event]
                      (when (= :bank/user-created (event-type event))
@@ -26,8 +27,8 @@
                                          :created-at (:created-at args)}]]))))
 
 (defn username-available? [store username]
-  ;; (not (es/search store :username "john"))
-  true)
+  (log/debug :username-available? {:check (es/search store :username username)})
+  (not (es/search store :username username)))
 
 (defn now []
   "fake timestamp")
