@@ -18,24 +18,44 @@
 
 (deftest test-add-agg
   (testing "adding an aggregate to an empty store"
-    (is (= {:events []
-            :projections []
-            :aggregates {(:id mock-agg-1) mock-agg-1}}
+    (is (= (assoc initial-event-store :aggregates
+                  {(:id mock-agg-1) mock-agg-1})
            (add-agg initial-event-store [(:id mock-agg-1) mock-agg-1]))))
 
   (testing "adding an aggregate to a non-empty store"
-    (is (= {:events []
-            :projections []
-            :aggregates {(:id mock-agg-1) mock-agg-1
-                         (:id mock-agg-2) mock-agg-2}}
+    (is (= (assoc initial-event-store :aggregates
+                  {(:id mock-agg-1) mock-agg-1
+                   (:id mock-agg-2) mock-agg-2})
            (-> initial-event-store
                (add-agg [(:id mock-agg-1) mock-agg-1])
                (add-agg [(:id mock-agg-2) mock-agg-2])))))
 
   (testing "replacing an existing aggregate"
-    (is (= {:events []
-            :projections []
-            :aggregates {(:id mock-agg-1a) mock-agg-1a}}
+    (is (= (assoc initial-event-store :aggregates
+                  {(:id mock-agg-1a) mock-agg-1a})
            (-> initial-event-store
                (add-agg [(:id mock-agg-1) mock-agg-1])
                (add-agg [(:id mock-agg-1a) mock-agg-1a]))))))
+
+(deftest test-create-store
+  (testing "shape of store"
+    (let [store (create-store)
+          ref @store]
+      (is (contains? ref :aggregates))
+      (is (contains? ref :events))
+      (is (contains? ref :indices))
+      (is (contains? ref :projections)))))
+
+(deftest test-post-event!
+  (testing "posting event to an empty store"
+    (let [store (create-store)]
+      (post-event! store {:foo :bar})
+      (is (= [{:foo :bar}]
+             (:events @store)))))
+
+  (testing "events are posted in order"
+    (let [store (create-store)]
+      (doseq [n (range 10)]
+        (post-event! store n))
+      (is (= [0 1 2 3 4 5 6 7 8 9]
+             (:events @store))))))

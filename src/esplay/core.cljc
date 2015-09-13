@@ -1,11 +1,11 @@
 (ns esplay.core
   (:require [clojure.data :refer [diff]]
-            [clojure.set :refer [index
-                                 intersection]]
+            [clojure.set :refer [index intersection]]
             [its.log :as log]
             [schema.core :as s #?@(:cljs [:include-macros true])]))
 
-(log/set-level! :debug)
+;;(log/set-level! :debug)
+(log/set-level! :off)
 
 (def EventType
   (s/either s/Keyword
@@ -29,14 +29,16 @@
 (def Index #{s/Any})
 
 (def EventStore
-  {:events [Event]
-   :projections [Projection]
-   :aggregates {AggregateId Aggregate}
-   :indices {IndexKey Index}})
+  {:aggregates {AggregateId Aggregate}
+   :events [Event]
+   :indices {IndexKey Index}
+   :projections [Projection]})
 
-(def initial-event-store {:events []
-                          :projections []
-                          :aggregates {}})
+(def initial-event-store
+  {:aggregates {}
+   :events []
+   :indices []
+   :projections []})
 
 (defn find-new-events [as bs]
   (let [na (count as)
