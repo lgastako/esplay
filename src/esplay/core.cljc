@@ -31,13 +31,13 @@
 (def EventStore
   {:aggregates {AggregateId Aggregate}
    :events [Event]
-   :indices {IndexKey Index}
+   :indexes {IndexKey Index}
    :projections [Projection]})
 
 (def initial-event-store
   {:aggregates {}
    :events []
-   :indices []
+   :indexes []
    :projections []})
 
 (defn find-new-events [as bs]
@@ -85,22 +85,24 @@
        (into #{})))
 
 (defn index-key [ref key]
-  (let [idx (index (:aggregates ref) [key])]
-    (swap! ref assoc-in [:indexes key] idx)))
+  (let [idx (-> ref
+                :aggregates
+                (index [key])
+                (dissoc {}))]
+    (assoc-in ref [:indexes key] idx)))
 
-(defn update-indices [_ ref old new]
+(defn update-indexes [_ ref old new]
   (let [old-aggregates (:aggregates old)
         new-aggregates (:aggregates new)
         updated-aggregates (find-updated-aggregates old-aggregates new-aggregates)]
     ;; TODO: more efficient in the future
     (let [keys (all-keys-from updated-aggregates)]
-      (doseq [key keys]
-        (index-key ref key)))))
+      (reduce index-key ref keys))))
 
 (defn create-store []
   (let [events (atom initial-event-store)]
     (add-watch events :projector apply-projections)
-    (add-watch events :indexer update-indices)
+    (add-watch events :indexer update-indexes)
     events))
 
 (defn post-event! [store event]
@@ -117,7 +119,7 @@
   (let [nkvs (count kvs)]
     (assert (even? nkvs))
     (assert (> nkvs 0)))
-  (let [f (partial search-index (:indices store))]
+  (let [f (partial search-index (:indexes store))]
     (->> [(vec kvs)]
          (into {})
          (map f)

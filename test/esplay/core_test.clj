@@ -14,7 +14,8 @@
     (is (thrown? AssertionError (find-new-events [:a :b] [:c :d :e]))))
 
   (testing "returns new events when as and bs are ok"
-    (is (= [:c :d] (find-new-events [:a :b] [:a :b :c :d])))))
+    (is (= [:c :d]
+           (find-new-events [:a :b] [:a :b :c :d])))))
 
 (deftest test-add-agg
   (testing "adding an aggregate to an empty store"
@@ -43,7 +44,7 @@
           ref @store]
       (is (contains? ref :aggregates))
       (is (contains? ref :events))
-      (is (contains? ref :indices))
+      (is (contains? ref :indexes))
       (is (contains? ref :projections)))))
 
 (deftest test-post-event!
@@ -59,3 +60,44 @@
         (post-event! store n))
       (is (= [0 1 2 3 4 5 6 7 8 9]
              (:events @store))))))
+
+(deftest test-add-projection
+  (testing "adding a projection to an empty store"
+    (let [store (create-store)
+          projection (fn [store event])]
+      (add-projection store projection)
+      (is (= [projection]
+             (:projections @store)))))
+
+  (testing "adding a projection adds it at the end"
+    (let [store (create-store)
+          projection1 (fn [store event])
+          projection2 (fn [store event])]
+      (add-projection store projection1)
+      (add-projection store projection2)
+      (is (= [projection1 projection2]
+             (:projections @store))))))
+
+(deftest test-index-key [ref key]
+  (testing "indexing empty aggregates"
+    (let [ref {:aggregates []}
+          ref' (index-key ref :foo)]
+      (is (= (assoc ref :indexes {:foo {}})
+             ref'))))
+
+  (testing "indexing aggregates with non-existent key"
+    (let [ref {:aggregates [{:foo :bar}]}
+          ref' (index-key ref :baz)]
+      (is (= (assoc ref :indexes {:baz {}})
+             ref'))))
+
+  (testing "indexing aggregates with existing key"
+    (let [ref {:aggregates [{:foo :bar :id 1}
+                            {:foo :bar :id 2}
+                            {:foo :baz}
+                            {:bif :Bam}]}
+          ref' (index-key ref :foo)]
+      (is (= (assoc ref :indexes {:foo {{:foo :bar} #{{:foo :bar :id 1}
+                                                      {:foo :bar :id 2}}
+                                        {:foo :baz} #{{:foo :baz}}}})
+             ref')))))
