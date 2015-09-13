@@ -101,3 +101,29 @@
                                                       {:foo :bar :id 2}}
                                         {:foo :baz} #{{:foo :baz}}}})
              ref')))))
+
+(deftest test-update-indexes
+  (testing "basic index updates"
+    (let [old {:aggregates [{:foo :bar :id 1}]}
+          new {:aggregates [{:foo :bar :id 1}
+                            {:foo :baz}
+                            {:foo :bar :id 2}]}
+          ref new
+          ref' (update-indexes :n/a ref old new)]
+      (is (= {:foo {{:foo :bar} #{{:foo :bar
+                                   :id 2}
+                                  {:foo :bar
+                                   :id 1}}
+                    {:foo :baz} #{{:foo :baz}}}
+              :id {{:id 1} #{{:foo :bar
+                              :id 1}}
+                   {:id 2} #{{:foo :bar
+                              :id 2}}}}
+             (:indexes ref'))))))
+
+(deftest test-all-keys-from
+  (testing "no xs"
+    (is (= #{} (all-keys-from nil))))
+
+  (testing "no keys"
+    (is (= #{} (all-keys-from [{} {} {}])))))

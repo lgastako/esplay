@@ -81,6 +81,7 @@
   (log/debug :all-keys-from {:xs xs})
   (->> xs
        (map keys)
+       (filter identity)
        flatten
        (into #{})))
 
