@@ -47,20 +47,20 @@
     (assert (= as (subvec bs 0 na)))
     (subvec bs na nb)))
 
-(defn add-agg [ref [agg-id agg]]
-  (update-in ref [:aggregates] assoc agg-id agg))
+(defn add-agg [sval [agg-id agg]]
+  (update-in sval [:aggregates] assoc agg-id agg))
 
-(defn project-ref [ref projection event]
-  (let [aggregates (projection ref event)]
-    (reduce add-agg ref aggregates)))
+(defn project-sval [sval projection event]
+  (let [aggregates (projection sval event)]
+    (reduce add-agg sval aggregates)))
 
-(defn project [store projection event]
-  (log/debug :project {:store store
+(defn project [sref projection event]
+  (log/debug :project {:sref sref
                        :projection projection
                        :event event})
-  (swap! store project-ref projection event))
+  (swap! sref project-sval projection event))
 
-(defn apply-projections [_ ref old new]
+(defn apply-projections [_ sref old new]
   (log/debug :apply-projections)
   (let [old-events (:events old)
         new-events (:events new)
@@ -70,7 +70,7 @@
         (log/debug :found-events (count added-events))
         (doseq [event added-events]
           (doseq [projection projections]
-            (project ref projection event)))))))
+            (project sref projection event)))))))
 
 (defn find-updated-aggregates [old new]
   (-> old
@@ -87,51 +87,68 @@
        flatten
        (into #{})))
 
-(defn index-key [ref key]
-  (let [idx (-> ref
+(defn index-key [sval key]
+  (let [idx (-> sval
                 :aggregates
                 (index [key])
                 (dissoc {}))]
-    (assoc-in ref [:indexes key] idx)))
+    (assoc-in sval [:indexes key] idx)))
 
-(defn update-indexes [_ ref old new]
+(defn update-indexes [_ sref old new]
+  ;; This is not necessarily thread safe, but then again doesn't this whole
+  ;; notion of receiving a reference that may have changed along with old/new
+  ;; values create this situation in the first place?  Anyway, for now I'm
+  ;; letting it be.
   (let [old-aggregates (:aggregates old)
         new-aggregates (:aggregates new)
         updated-aggregates (find-updated-aggregates old-aggregates new-aggregates)]
     ;; TODO: more efficient in the future
-    (let [keys (all-keys-from updated-aggregates)]
-      (reduce index-key ref keys))))
+    (let [keys (all-keys-from updated-aggregates)
+          new-indexes (reduce index-key new keys)]
+      ;; This is where we get unsafe
+      (swap! sref (fn [sval]
+                    (loop [sval sval
+                           indexes (:indexes new-indexes)]
+                      (if-let [pair (first indexes)]
+                        (do
+                          (println :pair pair)
+                          (flush)
+                          (let [[key index] pair]
+                            (println :key key :index index)
+#_                            (recur sval (rest indexes))))
+                        sval)))))))
 
 (defn create-store []
-  (let [events (atom initial-event-store)]
-    (add-watch events :projector apply-projections)
-    (add-watch events :indexer update-indexes)
-    events))
+  (let [sref (atom initial-event-store)]
+    (add-watch sref :projector apply-projections)
+    (add-watch sref :indexer update-indexes)
+    sref))
 
-(defn post-event! [store event]
-  (swap! store update-in [:events] conj event))
+(defn post-event! [sref event]
+  (swap! sref update-in [:events] conj event))
 
-(defn add-projection [store projection]
-  (swap! store update-in [:projections] conj projection))
+(defn add-projection [sref projection]
+  (swap! sref update-in [:projections] conj projection))
 
 (defn search-index [indexes query]
   (log/debug :search-index {:indexes indexes
                             :query query})
   nil)
 
-(defn search [store & kvs]
-  (log/debug :search {:store store
+(defn search [sref & kvs]
+  (log/debug :search {:sref sref
                       :kvs kvs})
   (let [nkvs (count kvs)]
     (assert (even? nkvs))
     (assert (> nkvs 0)))
-  (let [f (partial search-index (:indexes store))]
-    (log/debug :vec-kvs1 [(vec kvs)])
-    (log/debug :vec-kvs2 (into {} [(vec kvs)]))
-    (log/debug :vec-kvs2 (map f (into {} [(vec kvs)])))
-    ;;   (->> [(vec kvs)]
-    ;;        (apply into {})
-    ;;        (map f)
-    ;;        intersection)
-    )
+  ;; (let [indexes (:indexes @sref)
+  ;;       f (partial search-index indexes)]
+  ;;   (log/debug :vec-kvs1 [(vec kvs)])
+  ;;   (log/debug :vec-kvs2 (into {} [(vec kvs)]))
+  ;;   (log/debug :vec-kvs2 (map f (into {} [(vec kvs)])))
+  ;;   ;;   (->> [(vec kvs)]
+  ;;   ;;        (apply into {})
+  ;;   ;;        (map f)
+  ;;   ;;        intersection)
+  ;;   )
   nil)

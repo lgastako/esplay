@@ -40,67 +40,67 @@
 
 (deftest test-create-store
   (testing "shape of store"
-    (let [store (create-store)
-          ref @store]
-      (is (contains? ref :aggregates))
-      (is (contains? ref :events))
-      (is (contains? ref :indexes))
-      (is (contains? ref :projections)))))
+    (let [sref (create-store)
+          sval @sref]
+      (is (contains? sval :aggregates))
+      (is (contains? sval :events))
+      (is (contains? sval :indexes))
+      (is (contains? sval :projections)))))
 
 (deftest test-post-event!
   (testing "posting event to an empty store"
-    (let [store (create-store)]
-      (post-event! store {:foo :bar})
+    (let [sref (create-store)]
+      (post-event! sref {:foo :bar})
       (is (= [{:foo :bar}]
-             (:events @store)))))
+             (:events @sref)))))
 
   (testing "events are posted in order"
-    (let [store (create-store)]
+    (let [sref (create-store)]
       (doseq [n (range 10)]
-        (post-event! store n))
+        (post-event! sref n))
       (is (= [0 1 2 3 4 5 6 7 8 9]
-             (:events @store))))))
+             (:events @sref))))))
 
 (deftest test-add-projection
   (testing "adding a projection to an empty store"
-    (let [store (create-store)
-          projection (fn [store event])]
-      (add-projection store projection)
+    (let [sref (create-store)
+          projection (fn [sref event])]
+      (add-projection sref projection)
       (is (= [projection]
-             (:projections @store)))))
+             (:projections @sref)))))
 
   (testing "adding a projection adds it at the end"
-    (let [store (create-store)
-          projection1 (fn [store event])
-          projection2 (fn [store event])]
-      (add-projection store projection1)
-      (add-projection store projection2)
+    (let [sref (create-store)
+          projection1 (fn [sref event])
+          projection2 (fn [sref event])]
+      (add-projection sref projection1)
+      (add-projection sref projection2)
       (is (= [projection1 projection2]
-             (:projections @store))))))
+             (:projections @sref))))))
 
-(deftest test-index-key [ref key]
+(deftest test-index-key
   (testing "indexing empty aggregates"
-    (let [ref {:aggregates []}
-          ref' (index-key ref :foo)]
-      (is (= (assoc ref :indexes {:foo {}})
-             ref'))))
+    (let [val {:aggregates []}
+          val' (index-key val :foo)]
+      (is (= (assoc val :indexes {:foo {}})
+             val'))))
 
   (testing "indexing aggregates with non-existent key"
-    (let [ref {:aggregates [{:foo :bar}]}
-          ref' (index-key ref :baz)]
-      (is (= (assoc ref :indexes {:baz {}})
-             ref'))))
+    (let [val {:aggregates [{:foo :bar}]}
+          val' (index-key val :baz)]
+      (is (= (assoc val :indexes {:baz {}})
+             val'))))
 
   (testing "indexing aggregates with existing key"
-    (let [ref {:aggregates [{:foo :bar :id 1}
+    (let [val {:aggregates [{:foo :bar :id 1}
                             {:foo :bar :id 2}
                             {:foo :baz}
                             {:bif :Bam}]}
-          ref' (index-key ref :foo)]
-      (is (= (assoc ref :indexes {:foo {{:foo :bar} #{{:foo :bar :id 1}
+          val' (index-key val :foo)]
+      (is (= (assoc val :indexes {:foo {{:foo :bar} #{{:foo :bar :id 1}
                                                       {:foo :bar :id 2}}
                                         {:foo :baz} #{{:foo :baz}}}})
-             ref')))))
+             val')))))
 
 (deftest test-update-indexes
   (testing "basic index updates"
@@ -108,8 +108,8 @@
           new {:aggregates [{:foo :bar :id 1}
                             {:foo :baz}
                             {:foo :bar :id 2}]}
-          ref new
-          ref' (update-indexes :n/a ref old new)]
+          val new
+          val' (update-indexes :n/a val old new)]
       (is (= {:foo {{:foo :bar} #{{:foo :bar
                                    :id 2}
                                   {:foo :bar
@@ -119,7 +119,8 @@
                               :id 1}}
                    {:id 2} #{{:foo :bar
                               :id 2}}}}
-             (:indexes ref'))))))
+
+             (:indexes val'))))))
 
 (deftest test-all-keys-from
   (testing "no xs"
@@ -150,33 +151,46 @@
               {:bam :boom}]
              (find-updated-aggregates old new))))))
 
-(deftest test-search
-  (testing "zero kvs"
-    (let [store (create-store)]
-      (is (thrown? AssertionError (search store)))))
+;; (deftest test-search
+;;   (testing "zero kvs"
+;;     (let [sref (create-store)]
+;;       (is (thrown? AssertionError (search sref)))))
 
-  (testing "odd number of kvs"
-    (let [store (create-store)]
-      (is (thrown? AssertionError (search store)))))
+;;   (testing "odd number of kvs"
+;;     (let [sref (create-store)]
+;;       (is (thrown? AssertionError (search sref)))))
 
-  (testing "a single kv with no results"
-    (let [store (create-store)]
-      (is (= :fixme
-             (search store
-                     :username "john")))))
+;;   (testing "a single kv with no results"
+;;     (let [sref (create-store)]
+;;       (is (= :fixme
+;;              (search sref
+;;                      :username "john")))))
 
-  (testing "a single kv with results"
-    (let [store (create-store)]
-      (swap! store assoc :aggregates {"john" {:username "john"}})
-      (update-indexes nil store {} @store)
-      (is (= :fixme
-             (search store
-                     :username "john")))))
+;;   (testing "a single kv with results"
+;;     (let [sref (create-store)]
+;;       (swap! sref assoc :aggregates {"john" {:username "john"}})
+;;       (update-indexes nil sref {} @sref)
+;;       (is (= :fixme
+;;              (search sref
+;;                      :username "john")))))
 
-  (testing "multiple kvs with no results"
-    (let [store (create-store)]
-      (is (= nil (search store
-                         :username "john"
-                         :something "else")))))
+;;   (testing "multiple kvs with no results"
+;;     (let [sref (create-store)]
+;;       (is (= nil (search sref
+;;                          :username "john"
+;;                          :something "else")))))
 
-  (testing "multiple kvs with results"))
+;;   (testing "multiple kvs with multiple hits on a single result"
+;;     (let [sref (create-store)]
+;;       ;; TODO: create a user with username john and "something: else"
+;;       (is (= nil (search sref
+;;                          :username "john"
+;;                          :something "else")))))
+
+;;   (testing "multiple kvs with multiple results"
+;;     (let [sref (create-store)]
+;;       ;; TODO: create a user with username john,
+;;       ;; a different one with "something: else", etc.
+;;       (is (= nil (search sref
+;;                          :username "john"
+;;                          :something "else"))))))

@@ -10,15 +10,15 @@
 
 (defn make-event-counting-projection [& [key]]
   (let [key (or key "esn:total-events")]
-    (fn [store event]
-      (swap! store
+    (fn [sref event]
+      (swap! sref
              (fn [ref]
                (let [current-events (or (get-in ref [:aggregates key]) 0)]
                  (assoc-in ref :aggregates key (inc current-events))))))))
 
 #_
 (es/add-projection event-store
-                   (fn [store event]
+                   (fn [sref event]
                      (when (= :bank/user-created (event-type event))
                        (let [args (event-args event)
                              username (:username args)
@@ -26,9 +26,13 @@
                          [[aggregate-id {:username username
                                          :created-at (:created-at args)}]]))))
 
-(defn username-available? [store username]
-  (log/debug :username-available? {:check (es/search store :username username)})
-  (not (es/search store :username username)))
+(defn username-available? [sref username]
+  (let [results (es/search sref :username username)
+        result (not results)]
+    (log/debug :username-available? {:username username
+                                     :results results
+                                     :result result})
+    result))
 
 (defn now []
   "fake timestamp")
@@ -37,20 +41,20 @@
   (and (string? username)
        (> (count username) 0)))
 
-(defn create-user [store {:keys [username]}]
+(defn create-user [sref {:keys [username]}]
   (let [event
         (cond
           (not (valid-username? username))            [:bank/user-creation-failed
                                                        {:username username
                                                         :reason :invalid-username}]
-          (not (username-available? store username))  [:bank/user-creation-failed
+          (not (username-available? sref username))  [:bank/user-creation-failed
                                                        {:username username
                                                         :reason :taken}]
           :else                                       [:bank/user-created
                                                        {:username username
                                                         :created-at (now)}])]
-    (log/debug :create-user {:store store})
-    (es/post-event! store event)))
+    (log/debug :create-user {:sref sref})
+    (es/post-event! sref event)))
 
 ;; (defn open-account [store {:keys [username]}]
 ;;   ;; ...
