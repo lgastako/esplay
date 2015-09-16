@@ -94,7 +94,7 @@
                 (dissoc {}))]
     (assoc-in sval [:indexes key] idx)))
 
-(defn update-indexes [_ sref old new]
+(defn update-indexes! [_ sref old new]
   ;; This is not necessarily thread safe, but then again doesn't this whole
   ;; notion of receiving a reference that may have changed along with old/new
   ;; values create this situation in the first place?  Anyway, for now I'm
@@ -102,21 +102,22 @@
   (let [old-aggregates (:aggregates old)
         new-aggregates (:aggregates new)
         updated-aggregates (find-updated-aggregates old-aggregates new-aggregates)]
-    ;; TODO: more efficient in the future
-    (let [keys (all-keys-from updated-aggregates)
-          new-indexes (reduce index-key new keys)]
-      ;; This is where we get unsafe
-      (swap! sref (fn [sval]
-                    (loop [sval sval
-                           indexes (:indexes new-indexes)]
-                      (if-let [pair (first indexes)]
-                        (do
-                          (println :pair pair)
-                          (flush)
-                          (let [[key index] pair]
-                            (println :key key :index index)
-#_                            (recur sval (rest indexes))))
-                        sval)))))))
+    (when-not (empty? updated-aggregates)
+      ;; TODO: more efficient in the future
+      (let [keys (all-keys-from updated-aggregates)
+            new-indexes (reduce index-key new keys)]
+        ;; This is where we get unsafe
+        (swap! sref (fn [sval]
+                      (loop [sval sval
+                             indexes (:indexes new-indexes)]
+                        (if-let [pair (first indexes)]
+                          (do
+                            (println :pair pair)
+                            (flush)
+                            (let [[key index] pair]
+                              (println :key key :index index)
+                              #_                            (recur sval (rest indexes))))
+                          sval))))))))
 
 (defn create-store []
   (let [sref (atom initial-event-store)]

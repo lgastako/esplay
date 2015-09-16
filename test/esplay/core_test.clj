@@ -108,8 +108,8 @@
           new {:aggregates [{:foo :bar :id 1}
                             {:foo :baz}
                             {:foo :bar :id 2}]}
-          val new
-          val' (update-indexes :n/a val old new)]
+          val (atom new)
+          val' (update-indexes! :n/a val old new)]
       (is (= {:foo {{:foo :bar} #{{:foo :bar
                                    :id 2}
                                   {:foo :bar
