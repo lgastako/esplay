@@ -6,6 +6,10 @@
 (def mock-agg-1a {:id "fake-id-1" :data "misc-a"})
 (def mock-agg-2 {:id "fake-id-2" :data "misc-2"})
 
+(defn wait-for-updates
+  ([] (wait-for-updates 100))
+  ([ms] (Thread/sleep ms)))
+
 (deftest test-find-new-events
   (testing "explodes if bs smaller than as"
     (is (thrown? AssertionError (find-new-events [:a :b :c] [:a :b]))))
@@ -50,22 +54,28 @@
 (deftest test-post-event!
   (testing "posting event to an empty store"
     (let [sref (create-store)]
-      (post-event! sref {:foo :bar})
-      (is (= [{:foo :bar}]
+      (post-event! sref {:event-type :foo})
+      (wait-for-updates)
+      (is (= [{:event-type :foo}]
              (:events @sref)))))
 
   (testing "events are posted in order"
-    (let [sref (create-store)]
-      (doseq [n (range 10)]
-        (post-event! sref n))
-      (is (= [0 1 2 3 4 5 6 7 8 9]
-             (:events @sref))))))
+    (letfn [(make-event [n]
+              {:event-type :n
+               :args {:n n}})]
+      (let [sref (create-store)]
+        (doseq [n (range 10)]
+          (post-event! sref (make-event n))
+          (wait-for-updates))
+        (is (= (map make-event (range 10))
+               (:events @sref)))))))
 
 (deftest test-add-projection
   (testing "adding a projection to an empty store"
     (let [sref (create-store)
           projection (fn [sref event])]
       (add-projection sref projection)
+      (wait-for-updates)
       (is (= [projection]
              (:projections @sref)))))
 
@@ -75,31 +85,34 @@
           projection2 (fn [sref event])]
       (add-projection sref projection1)
       (add-projection sref projection2)
+      (wait-for-updates)
       (is (= [projection1 projection2]
              (:projections @sref))))))
 
 (deftest test-index-key
   (testing "indexing empty aggregates"
-    (let [val {:aggregates []}
+    (let [val {:aggregates {}}
           val' (index-key val :foo)]
       (is (= (assoc val :indexes {:foo {}})
              val'))))
 
   (testing "indexing aggregates with non-existent key"
-    (let [val {:aggregates [{:foo :bar}]}
+    (let [val {:aggregates {:some-agg {:foo :bar}}}
           val' (index-key val :baz)]
       (is (= (assoc val :indexes {:baz {}})
              val'))))
 
   (testing "indexing aggregates with existing key"
-    (let [val {:aggregates [{:foo :bar :id 1}
-                            {:foo :bar :id 2}
-                            {:foo :baz}
-                            {:bif :Bam}]}
+    (let [val {:aggregates {:agg1 {:foo :bar :id 1}
+                            :agg2 {:foo :bar :id 2}
+                            :agg3 {:foo :baz}
+                            :agg4 {:bif :Bam}}}
           val' (index-key val :foo)]
-      (is (= (assoc val :indexes {:foo {{:foo :bar} #{{:foo :bar :id 1}
+      (is (= (-> val
+                 (assoc :indexes {:foo {{:foo :bar} #{{:foo :bar :id 1}
                                                       {:foo :bar :id 2}}
                                         {:foo :baz} #{{:foo :baz}}}})
+                 (dissoc :aggregates))
              val')))))
 
 (deftest test-update-indexes
@@ -108,8 +121,9 @@
           new {:aggregates [{:foo :bar :id 1}
                             {:foo :baz}
                             {:foo :bar :id 2}]}
-          val (atom new)
-          val' (update-indexes! :n/a val old new)]
+          val (agent new)
+          val' (update-indexes :n/a val old new)]
+      (wait-for-updates)
       (is (= {:foo {{:foo :bar} #{{:foo :bar
                                    :id 2}
                                   {:foo :bar
@@ -168,7 +182,7 @@
 
 ;;   (testing "a single kv with results"
 ;;     (let [sref (create-store)]
-;;       (swap! sref assoc :aggregates {"john" {:username "john"}})
+;;       (send sref assoc :aggregates {"john" {:username "john"}})
 ;;       (update-indexes nil sref {} @sref)
 ;;       (is (= :fixme
 ;;              (search sref

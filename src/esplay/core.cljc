@@ -37,7 +37,7 @@
 (def initial-event-store
   {:aggregates {}
    :events []
-   :indexes []
+   :indexes {}
    :projections []})
 
 (defn find-new-events [as bs]
@@ -58,7 +58,7 @@
   (log/debug :project {:sref sref
                        :projection projection
                        :event event})
-  (swap! sref project-sval projection event))
+  (send sref project-sval projection event))
 
 (defn apply-projections [_ sref old new]
   (log/debug :apply-projections)
@@ -88,17 +88,47 @@
        (into #{})))
 
 (defn index-key [sval key]
+  (log/warn :index-key 1 sval)
+  (log/warn :index-key 2 (-> sval
+                             :aggregates))
+  (log/warn :index-key 3 (-> sval
+                             :aggregates
+                             vals))
+  (log/warn :index-key 4 (-> sval
+                             :aggregates
+                             vals
+                             vec))
+  (log/warn :index-key 5 (-> sval
+                             :aggregates
+                             vals
+                             vec
+                             (index [key])))
+  (log/warn :index-key 5 (-> sval
+                             :aggregates
+                             vals
+                             vec
+                             (index [key])
+                             (dissoc {})))
   (let [idx (-> sval
                 :aggregates
+                vals
+                vec
                 (index [key])
                 (dissoc {}))]
-    (assoc-in sval [:indexes key] idx)))
+    (let [res (assoc-in sval [:indexes key] idx)]
+      (log/warn :index-key {:sval sval
+                            :key key
+                            :idx idx
+                            :agg (:aggregates sval)
+                            :res res})
+      res)))
 
-(defn update-indexes! [_ sref old new]
-  ;; This is not necessarily thread safe, but then again doesn't this whole
-  ;; notion of receiving a reference that may have changed along with old/new
-  ;; values create this situation in the first place?  Anyway, for now I'm
-  ;; letting it be.
+(log/set-level! :warn)
+
+(defn set-index [sval key index]
+  (assoc-in sval [:indexes key] index))
+
+(defn update-indexes [_ sref old new]
   (let [old-aggregates (:aggregates old)
         new-aggregates (:aggregates new)
         updated-aggregates (find-updated-aggregates old-aggregates new-aggregates)]
@@ -106,30 +136,33 @@
       ;; TODO: more efficient in the future
       (let [keys (all-keys-from updated-aggregates)
             new-indexes (reduce index-key new keys)]
-        ;; This is where we get unsafe
-        (swap! sref (fn [sval]
-                      (loop [sval sval
-                             indexes (:indexes new-indexes)]
-                        (if-let [pair (first indexes)]
-                          (do
-                            (println :pair pair)
-                            (flush)
-                            (let [[key index] pair]
-                              (println :key key :index index)
-                              #_                            (recur sval (rest indexes))))
-                          sval))))))))
+        (send sref (fn [sval]
+                     (loop [sval sval
+                            indexes (:indexes new-indexes)]
+                       (if-let [pair (first indexes)]
+                         (let [[key index] pair]
+                           (recur (set-index sval key index)
+                                  (rest indexes)))
+                         sval))))))))
+
+(def validate-sval (partial s/validate EventStore))
+
+(defn handle-store-errors [sref ex]
+  (log/error :handle-store-errors {:sref sref :ex ex}))
 
 (defn create-store []
-  (let [sref (atom initial-event-store)]
+  (let [sref (agent initial-event-store
+                    :validator validate-sval
+                    :error-handler handle-store-errors)]
     (add-watch sref :projector apply-projections)
     (add-watch sref :indexer update-indexes)
     sref))
 
 (defn post-event! [sref event]
-  (swap! sref update-in [:events] conj event))
+  (send sref update-in [:events] conj event))
 
 (defn add-projection [sref projection]
-  (swap! sref update-in [:projections] conj projection))
+  (send sref update-in [:projections] conj projection))
 
 (defn search-index [indexes query]
   (log/debug :search-index {:indexes indexes

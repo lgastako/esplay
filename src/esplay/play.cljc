@@ -11,10 +11,10 @@
 (defn make-event-counting-projection [& [key]]
   (let [key (or key "esn:total-events")]
     (fn [sref event]
-      (swap! sref
-             (fn [ref]
-               (let [current-events (or (get-in ref [:aggregates key]) 0)]
-                 (assoc-in ref :aggregates key (inc current-events))))))))
+      (send sref
+            (fn [ref]
+              (let [current-events (or (get-in ref [:aggregates key]) 0)]
+                (assoc-in ref :aggregates key (inc current-events))))))))
 
 #_
 (es/add-projection event-store
