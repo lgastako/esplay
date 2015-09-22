@@ -3,13 +3,12 @@
             [esplay.core :as es]
             [esplay.event :as event]
             [esplay.index :as index]
+            [esplay.projection :as projection]
             [esplay.store :as store]
             [its.log :as log]))
 
 (def event-type first)
 (def event-args second)
-
-(def event-store (store/create))
 
 (defn make-event-counting-projection [& [key]]
   (let [key (or key "esn:total-events")]
@@ -19,15 +18,19 @@
               (let [current-events (or (get-in ref [:aggregates key]) 0)]
                 (assoc-in ref :aggregates key (inc current-events))))))))
 
-#_
-(es/add-projection event-store
-                   (fn [sval event]
-                     (when (= :bank/user-created (event-type event))
-                       (let [args (event-args event)
-                             username (:username args)
-                             aggregate-id (str "esn:user:" username)]
-                         [[aggregate-id {:username username
-                                         :created-at (:created-at args)}]]))))
+(defn create-play-store []
+  (let [store (store/create)]
+    (projection/add store
+                    (fn [sval event]
+                      (when (= :bank/user-created (event-type event))
+                        (let [args (event-args event)
+                              username (:username args)
+                              aggregate-id (str "esn:user:" username)]
+                          [[aggregate-id {:username username
+                                          :created-at (:created-at args)}]]))))
+    store))
+
+(def event-store (create-play-store))
 
 (defn username-available? [sref username]
   (empty? (index/search sref :username username)))
@@ -42,15 +45,15 @@
 (defn create-user [sref {:keys [username]}]
   (let [event
         (cond
-          (not (valid-username? username))           [:bank/user-creation-failed
-                                                      {:username username
-                                                       :reason :invalid-username}]
-          (not (username-available? sref username))  [:bank/user-creation-failed
-                                                      {:username username
-                                                       :reason :taken}]
-          :else                                      [:bank/user-created
-                                                      {:username username
-                                                       :created-at (now)}])]
+          (not (valid-username? username))           {:event-type :bank/user-creation-failed
+                                                      :args {:username username
+                                                             :reason :invalid-username}}
+          (not (username-available? sref username))  {:event-type :bank/user-creation-failed
+                                                      :args {:username username
+                                                             :reason :taken}}
+          :else                                      {:event-type :bank/user-created
+                                                      :args {:username username
+                                                             :created-at (now)}})]
     (log/debug :create-user {:sref sref
                              :event event})
     (event/post! sref event)))

@@ -1,6 +1,7 @@
 (ns esplay.play-test
   (:require [clojure.test :refer :all]
             [esplay.core :as es]
+            [esplay.index :as index]
             [esplay.play :refer :all]
             [esplay.store :as store]
             [its.log :as log]))

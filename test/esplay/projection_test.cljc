@@ -1,6 +1,8 @@
 (ns esplay.projections-test
   (:require [clojure.test :refer :all]
             [esplay.core :refer :all]
+            [esplay.aggregate :as aggregate]
+            [esplay.event :as event]
             [esplay.projection :as projection]
             [esplay.store :as store]))
 
@@ -33,5 +35,20 @@
       (await sref)
       (is (= [projection1 projection2]
              (:projections @sref))))))
+
+(deftest test-apply-all
+  (testing "firing a basic projection"
+    (let [sref (store/create)
+          projection (fn [sval event]
+                       (let [event-type (:event-type event)
+                             agg-id (-> event-type
+                                        (str "-count")
+                                        keyword)]
+                         (send sref aggregate/update agg-id (fnil inc 0))))]
+      (projection/add sref projection)
+      (await sref)
+      (event/post! sref {:event-type :projection/test})
+      (await sref)
+      (is (= :foo (:aggregates @sref))))))
 
 ;; (run-tests)
