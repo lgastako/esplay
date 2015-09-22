@@ -3,7 +3,6 @@
             [its.log :as log]))
 
 (defn all-keys-from [xs]
-  (log/debug :all-keys-from {:xs xs})
   (->> xs
        ;; (map second)
        (map keys)
@@ -36,14 +35,9 @@
   (:aggregates @sref))
 
 (defn all-by-kv [sval k v]
-  (log/debug :all-by-kv {:k k
-                         :v v
-                         :sval sval})
   (let [locator {k v}
         index (:index sval)]
-    (log/debug :looking-up {:locator locator})
-    (when-let [results (get index locator)]
-      (apply intersection results))))
+    (get index locator)))
 
 (defn by-id [sval k v]
   (first (all-by-kv sval k v)))
@@ -51,12 +45,11 @@
 (defn search [sref & kvs]
   (let [sval @sref
         nkvs (count kvs)]
-    (log/debug :search {:sval sval
-                        :kvs kvs})
     (assert (even? nkvs))
     (when (pos? nkvs)
-      (log/debug :applying :all-by-kv)
       (->> kvs
            (partition 2)
            (mapv (partial apply all-by-kv sval))
-           (filterv identity)))))
+           (apply intersection)
+           (filterv identity)
+           (into #{})))))

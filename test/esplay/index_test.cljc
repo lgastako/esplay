@@ -4,13 +4,15 @@
             [esplay.store :as store]
             [its.log :as log]))
 
+(def no-results #{})
+
 (deftest test-all-keys-from
   (testing "no xs"
-    (is (= #{}
+    (is (= no-results
            (index/all-keys-from nil))))
 
   (testing "no keys"
-    (is (= #{}
+    (is (= no-results
            (index/all-keys-from [{} {} {}]))))
 
   (testing "some keys"
@@ -68,45 +70,64 @@
       (send sref assoc :aggregates aggs)
       (await sref)
       (is (= aggs (:aggregates @sref)))
-      (is (= []
+      (is (= no-results
              (index/search sref
                            :username "john")))))
 
   (testing "a single kv with results"
-    (let [sref (store/create)]
-      (send sref assoc :aggregates {"john" {:username "john"}})
+    (let [sref (store/create)
+          aggs {"john" {:username "john"}}]
+      (send sref assoc :aggregates aggs)
       (await sref)
       (index/create :mock-key sref :mock-old @sref)
       (await sref)
-      (is (= :fixme
+      (is (= #{(get aggs "john")}
              (index/search sref
-                     :username "john")))))
+                           :username "john")))))
 
+  (testing "multiple kvs with no results"
+    (let [sref (store/create)]
+      (index/create :mock-key sref :mock-old @sref)
+      (await sref)
+      (is (= no-results
+             (index/search sref
+                           :username "john"
+                           :something "else")))))
 
-  )
+  (testing "multiple kvs with multiple hits on a single result"
+    (let [sref (store/create)
+          aggs {"john" {:username "john"
+                        :something "else"}}]
+      (send sref assoc :aggregates aggs)
+      (await sref)
+      (index/create :mock-key sref :mock-old @sref)
+      (await sref)
+      (is (= #{(get aggs "john")}
+             (index/search sref
+                           :username "john"
+                           :something "else")))))
 
-(run-tests)
-
-
-;;   (testing "multiple kvs with no results"
-;;     (let [sref (create-store)]
-;;       (is (= nil (search sref
-;;                          :username "john"
-;;                          :something "else")))))
-
-;;   (testing "multiple kvs with multiple hits on a single result"
-;;     (let [sref (create-store)]
-;;       ;; TODO: create a user with username john and "something: else"
-;;       (is (= nil (search sref
-;;                          :username "john"
-;;                          :something "else")))))
-
-;;   (testing "multiple kvs with multiple results"
-;;     (let [sref (create-store)]
-;;       ;; TODO: create a user with username john,
-;;       ;; a different one with "something: else", etc.
-;;       (is (= nil (search sref
-;;                          :username "john"
-;;                          :something "else"))))))
+  (testing "multiple kvs with multiple results"
+    (let [sref (store/create)
+          aggs {"john0" {:username "john"
+                         :something "else"
+                         :separator 0}
+                "john1" {:username "john"
+                         :something "else"
+                         :separator 1}
+                "dave1" {:username "dave"
+                         :something "different"
+                         :separator 3}} ]
+      (send sref assoc :aggregates aggs)
+      (await sref)
+      (index/create :mock-key sref :mock-old @sref)
+      (await sref)
+      (is (= aggs
+             (:aggregates @sref)))
+      (is (= #{(get aggs "john0")
+               (get aggs "john1")}
+             (index/search sref
+                           :username "john"
+                           :something "else"))))))
 
 ;; (run-tests)

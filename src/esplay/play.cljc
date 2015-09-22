@@ -42,16 +42,17 @@
 (defn create-user [sref {:keys [username]}]
   (let [event
         (cond
-          (not (valid-username? username))            [:bank/user-creation-failed
-                                                       {:username username
-                                                        :reason :invalid-username}]
+          (not (valid-username? username))           [:bank/user-creation-failed
+                                                      {:username username
+                                                       :reason :invalid-username}]
           (not (username-available? sref username))  [:bank/user-creation-failed
-                                                       {:username username
-                                                        :reason :taken}]
-          :else                                       [:bank/user-created
-                                                       {:username username
-                                                        :created-at (now)}])]
-    (log/debug :create-user {:sref sref})
+                                                      {:username username
+                                                       :reason :taken}]
+          :else                                      [:bank/user-created
+                                                      {:username username
+                                                       :created-at (now)}])]
+    (log/debug :create-user {:sref sref
+                             :event event})
     (event/post! sref event)))
 
 ;; (defn open-account [store {:keys [username]}]
