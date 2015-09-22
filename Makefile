@@ -1,6 +1,9 @@
 all:
 	@cat Makefile
 
+clean:
+	lein clean
+
 test:
 	lein auto test
 
