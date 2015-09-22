@@ -34,4 +34,4 @@
       (is (not (username-available? store "jingleheimer schmidt2")))
       (is (username-available? store "other")))))
 
-(run-tests)
+;; (run-tests)

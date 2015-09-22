@@ -30,3 +30,6 @@
         (doseq [event added-events]
           (doseq [projection projections]
             (project sref projection event)))))))
+
+(defn add [sref projection]
+  (send sref update-in [:projections] conj projection))
