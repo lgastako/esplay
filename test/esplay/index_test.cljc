@@ -19,25 +19,45 @@
 
 (deftest test-create-indexes
   (testing "basic index creation"
-    (let [x (agent {:aggregates {:agg1 {:foo :bar
-                                        :baz :bif}
-                                 :agg2 {:foo :bar
-                                        :baz :boom}
-                                 :agg3 {:foo :or-not-to-foo}
-                                 :agg4 {:gleep :glork}}})]
+    (let [x (agent {:aggregates #{{:id 1
+                                   :foo :bar
+                                   :baz :bif}
+                                  {:id 2
+                                   :foo :bar
+                                   :baz :boom}
+                                  {:id 3
+                                   :foo :or-not-to-foo}
+                                  {:id 4
+                                   :gleep :glork}}})]
       (index/create :mock-key x :mock-old @x)
       (await x)
       (log/warn :settled {:x x})
-      (is (= {{:baz :bif} #{{:foo :bar
+      (is (= {{:baz :bif} #{{:id 1
+                             :foo :bar
                              :baz :bif}}
-              {:baz :boom} #{{:foo :bar
+              {:baz :boom} #{{:id 2
+                              :foo :bar
                               :baz :boom}},
-              {:gleep :glork} #{{:gleep :glork}}
-              {:foo :bar} #{{:foo :bar
+              {:gleep :glork} #{{:id 4
+                                 :gleep :glork}}
+              {:foo :bar} #{{:id 1
+                             :foo :bar
                              :baz :bif}
-                            {:foo :bar
+                            {:id 2
+                             :foo :bar
                              :baz :boom}}
-              {:foo :or-not-to-foo} #{{:foo :or-not-to-foo}}}
+              {:foo :or-not-to-foo} #{{:id 3
+                                       :foo :or-not-to-foo}}
+              {:id 3} #{{:id 3
+                         :foo :or-not-to-foo}}
+              {:id 2} #{{:id 2
+                         :foo :bar
+                         :baz :boom}}
+              {:id 4} #{{:id 4
+                         :gleep :glork}}
+              {:id 1} #{{:id 1
+                         :foo :bar
+                         :baz :bif}}}
              (:index @x))))))
 
 
@@ -47,8 +67,8 @@
 
   (testing "non-zero kvs"
     (let [sref (store/create)
-          aggs {:foo {:foo :bar}
-                :bar {:bar :baz}}]
+          aggs #{{:foo :bar}
+                 {:bar :baz}}]
       (send sref assoc :aggregates aggs)
       (await sref)
       (is (= (:aggregates @sref)
@@ -74,11 +94,11 @@
 
   (testing "a single kv with results"
     (let [sref (store/create)]
-      (send sref assoc :aggregates {"john" {:username "john"}})
+      (send sref assoc :aggregates #{:username "john"})
       (await sref)
       (index/create :mock-key sref :mock-old @sref)
       (await sref)
-      (is (= :fixme
+      (is (= #{:john {:username "john"}}
              (index/search sref
                      :username "john")))))
 

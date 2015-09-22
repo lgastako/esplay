@@ -5,7 +5,6 @@
 (defn all-keys-from [xs]
   (log/debug :all-keys-from {:xs xs})
   (->> xs
-       ;; (map second)
        (map keys)
        (filter identity)
        flatten
@@ -22,7 +21,7 @@
 (defn create [_ ref _ new]
   ;; For now we generate all indexes on every change.  This is insane and will
   ;; be optimized in the future.
-  (let [entities (->> new :aggregates vals (into #{}))
+  (let [entities (:aggregates new)
         keys (all-keys-from entities)
         indexes (mapv (partial make-index entities) keys)
         index (merge-indexes indexes)        ]
@@ -59,4 +58,6 @@
       (->> kvs
            (partition 2)
            (mapv (partial apply all-by-kv sval))
-           (filterv identity)))))
+           (filterv identity)
+;;           (apply intersection)
+           ))))

@@ -14,8 +14,6 @@
 
 (def Projection s/Any)
 
-(def AggregateId s/Any)
-
 (def Aggregate s/Any)
 
 (def Field s/Keyword)
@@ -26,7 +24,7 @@
 (def Index {IndexEntry #{Aggregate}})
 
 (def EventStore
-  {:aggregates {AggregateId Aggregate}
+  {:aggregates #{Aggregate}
    :events [Event]
    :index Index
    :projections [Projection]})
