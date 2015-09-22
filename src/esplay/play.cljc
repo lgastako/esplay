@@ -1,12 +1,15 @@
 (ns esplay.play
   (:require [clojure.set :as set]
             [esplay.core :as es]
+            [esplay.event :as event]
+            [esplay.index :as index]
+            [esplay.store :as store]
             [its.log :as log]))
 
 (def event-type first)
 (def event-args second)
 
-(def event-store (es/create-store))
+(def event-store (store/create))
 
 (defn make-event-counting-projection [& [key]]
   (let [key (or key "esn:total-events")]
@@ -27,12 +30,7 @@
                                          :created-at (:created-at args)}]]))))
 
 (defn username-available? [sref username]
-  (let [results (es/search sref :username username)
-        result (not results)]
-    (log/debug :username-available? {:username username
-                                     :results results
-                                     :result result})
-    result))
+  (empty? (index/search sref :username username)))
 
 (defn now []
   "fake timestamp")
@@ -54,7 +52,7 @@
                                                        {:username username
                                                         :created-at (now)}])]
     (log/debug :create-user {:sref sref})
-    (es/post-event! sref event)))
+    (event/post! sref event)))
 
 ;; (defn open-account [store {:keys [username]}]
 ;;   ;; ...

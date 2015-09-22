@@ -1,18 +1,17 @@
-(ns esplay.core
-  (:require [clojure.data :refer [diff]]
-            [clojure.set :refer [index intersection]]
-            [esplay.indexes :as indexes]
-            [esplay.schemas :refer :all]
-            [its.log :as log]
-            [schema.core :as s #?@(:cljs [:include-macros true])]))
+(ns esplay.store
+  (:require [esplay.index :as index]
+            [esplay.schemas :refer [initial-event-store]]
+            [esplay.validators :as validators]
+            [esplay.projection :as projection]
+            [its.log :as log]))
 
 (defn handle-errors [sref ex]
   (log/error :store/handle-errors {:sref sref :ex ex}))
 
 (defn create []
   (let [sref (agent initial-event-store
-                    :validator validate-sval
-                    :error-handler handle-store-errors)]
-    (add-watch sref :projector apply-projections)
-    (add-watch sref :indexer indexes/create)
+                    :validator validators/sval
+                    :error-handler handle-errors)]
+    (add-watch sref :projector projection/apply-all)
+    (add-watch sref :indexer index/create)
     sref))

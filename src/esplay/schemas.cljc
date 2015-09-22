@@ -1,6 +1,5 @@
-(ns esplay.schema
-  (:require [its.log :as log]
-            [schema.core :as s #?@(:cljs [:include-macros true])]))
+(ns esplay.schemas
+  (:require [schema.core :as s #?@(:cljs [:include-macros true])]))
 
 (def EventType
   (s/either s/Keyword
@@ -29,13 +28,11 @@
 (def EventStore
   {:aggregates {AggregateId Aggregate}
    :events [Event]
-   :indexes #{Index}
+   :index Index
    :projections [Projection]})
 
 (def initial-event-store
   {:aggregates {}
    :events []
-   :indexes #{}
+   :index {}
    :projections []})
-
-(def validate-sval (partial s/validate EventStore))
