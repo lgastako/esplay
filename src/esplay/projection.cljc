@@ -1,13 +1,10 @@
-(ns esplay.core
+(ns esplay.projection
   (:require [clojure.data :refer [diff]]
             [clojure.set :refer [index intersection]]
             [esplay.indexes :as indexes]
-            [esplay.schemas :refer :all]
+            [esplay.schema :refer :all]
             [its.log :as log]
             [schema.core :as s #?@(:cljs [:include-macros true])]))
-
-;;(log/set-level! :debug)
-(log/set-level! :off)
 
 (defn find-new-events [as bs]
   (let [na (count as)
@@ -15,9 +12,6 @@
     (assert (>= nb na))
     (assert (= as (subvec bs 0 na)))
     (subvec bs na nb)))
-
-(defn add-agg [sval [agg-id agg]]
-  (update-in sval [:aggregates] assoc agg-id agg))
 
 (defn project-sval [sval projection event]
   (let [aggregates (projection sval event)]
@@ -40,15 +34,3 @@
         (doseq [event added-events]
           (doseq [projection projections]
             (project sref projection event)))))))
-
-(defn post-event! [sref event]
-  (send sref update-in [:events] conj event))
-
-(defn add-projection [sref projection]
-  (send sref update-in [:projections] conj projection))
-
-(defn search-index [indexes query]
-  (log/debug :search-index {:indexes indexes
-                            :query query})
-  nil)
-

@@ -18,7 +18,7 @@
 
 #_
 (es/add-projection event-store
-                   (fn [sref event]
+                   (fn [sval event]
                      (when (= :bank/user-created (event-type event))
                        (let [args (event-args event)
                              username (:username args)
