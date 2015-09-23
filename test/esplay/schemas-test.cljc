@@ -1,4 +1,4 @@
-(ns esplay.schemas-tests
+(ns esplay.schemas-test
   (:require [clojure.test :refer :all]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
