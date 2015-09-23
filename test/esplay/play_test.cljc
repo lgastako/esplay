@@ -1,6 +1,7 @@
 (ns esplay.play-test
   (:require [clojure.test :refer :all]
             [esplay.core :as es]
+            [esplay.index :as aggregate]
             [esplay.index :as index]
             [esplay.play :refer :all]
             [esplay.store :as store]
@@ -20,24 +21,37 @@
     (is (not (valid-username? :foo)))))
 
 (deftest test-create-user
-  (testing "create user does not exist"
+  (testing "user does not exist"
     (let [store (store/create)]
-      (create-user store "john")
+      (create-user store {:username "john"})
       (await store)
-      (is (= #{"foo" "bar"}
+      (is (= [{:event-type :bank/user-created
+               :args {:username "john"
+                      :created-at "fake timestamp"}}]
              (:events @store)))
       (is (= #{"baz" "bif"}
-             (:aggregates @store )))))
+             (:aggregates @store)))))
 
-  (testing "create user does not exist"))
+  (testing "user does exist"
+    (let [store (store/create)]
+      (create-user store {:username "john"
+                          :selector 0})
+      (await store)
+      (create-user store {:username "john"
+                          :selector 1})
+      (await store)
+      (let [user (aggregate/by-id @store "john")]
+        (is (= 0 (:selector user)))))))
 
 (deftest test-username-available?
+  #_
   (testing "username is available"
     (let [store (store/create)]
       (is (username-available? store "john"))
       (is (username-available? store "jacob"))
       (is (username-available? store "jingleheimer schmidt"))))
 
+  #_
   (testing "username is not available"
     (let [store (store/create)]
       (create-user store {:username "john2"})
