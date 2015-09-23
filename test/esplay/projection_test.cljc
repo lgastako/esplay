@@ -1,4 +1,4 @@
-(ns esplay.projections-test
+(ns esplay.projection-test
   (:require [clojure.test :refer :all]
             [clojure.string :as str]
             [esplay.core :refer :all]
