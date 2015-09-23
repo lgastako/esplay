@@ -3,8 +3,8 @@
             [its.log :as log]))
 
 (defn all-keys-from [xs]
+  ;; (log/error :all-keys-from {:xs xs})
   (->> xs
-       ;; (map second)
        (map keys)
        (filter identity)
        flatten

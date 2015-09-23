@@ -5,19 +5,23 @@
             [esplay.aggregate :as aggregate]
             [esplay.event :as event]
             [esplay.projection :as projection]
+            [esplay.schemas :as schemas]
             [esplay.store :as store]
             [its.log :as log]))
 
 (defn project-event-type-count [sval event]
   (let [event-type (:event-type event)
-        agg-id (->> event-type
-                    ((juxt namespace name))
-                    (str/join "/")
-                    (str "count:"))]
-    (log/debug :project-event-type-count {:sval sval
-                                          :event event
-                                          :agg-id agg-id})
-    (update-in sval [:aggregates agg-id] (fnil inc 0))))
+        agg-id (some->> event-type
+                        ((juxt namespace name))
+                        (str/join "/")
+                        (str "count:"))]
+    (if-not agg-id
+      (log/error :failed-to-calc-agg-id {:event event})
+      (let [f (fnil inc 0)
+            agg (-> sval
+                    (get-in [:aggregates agg-id])
+                    f)]
+        [[agg-id agg]]))))
 
 (deftest test-find-new-events
   (testing "explodes if bs smaller than as"
@@ -49,6 +53,19 @@
       (is (= [projection1 projection2]
              (:projections @sref))))))
 
+(deftest test-project-sval
+  (testing "..."
+    (let [event {:event-type :foo}
+          sval schemas/initial-event-store
+          sval' (projection/project-sval sval project-event-type-count event)]
+      (is (= (assoc sval
+                    :aggregates {"count:/foo" 1})
+             sval')))))
+
+(deftest test-project
+  (testing "..."
+    :not-implemented))
+
 (deftest test-apply-all
   (testing "firing a basic projection"
     (let [sref (store/create)]
@@ -58,4 +75,4 @@
       (await sref)
       (is (= :foo (:aggregates @sref))))))
 
-(run-tests)
+;; (run-tests)

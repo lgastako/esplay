@@ -6,21 +6,21 @@
 
 (deftest test-aggregate-add
   (testing "adding an aggregate to an empty store"
-    (is (= (assoc schemas/initial-event-store :aggregates
-                  {(:id mock-agg-1) mock-agg-1})
+    (is (= (assoc schemas/initial-event-store
+                  :aggregates {(:id mock-agg-1) mock-agg-1})
            (aggregate/add schemas/initial-event-store [(:id mock-agg-1) mock-agg-1]))))
 
   (testing "adding an aggregate to a non-empty store"
-    (is (= (assoc schemas/initial-event-store :aggregates
-                  {(:id mock-agg-1) mock-agg-1
-                   (:id mock-agg-2) mock-agg-2})
+    (is (= (assoc schemas/initial-event-store
+                  :aggregates {(:id mock-agg-1) mock-agg-1
+                               (:id mock-agg-2) mock-agg-2})
            (-> schemas/initial-event-store
                (aggregate/add [(:id mock-agg-1) mock-agg-1])
                (aggregate/add [(:id mock-agg-2) mock-agg-2])))))
 
   (testing "replacing an existing aggregate"
-    (is (= (assoc schemas/initial-event-store :aggregates
-                  {(:id mock-agg-1a) mock-agg-1a})
+    (is (= (assoc schemas/initial-event-store
+                  :aggregates {(:id mock-agg-1a) mock-agg-1a})
            (-> schemas/initial-event-store
                (aggregate/add [(:id mock-agg-1) mock-agg-1])
                (aggregate/add [(:id mock-agg-1a) mock-agg-1a]))))))
