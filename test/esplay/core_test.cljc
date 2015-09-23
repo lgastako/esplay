@@ -3,7 +3,7 @@
             [esplay.core :refer :all]
             [its.log :as log]))
 
-(deftest log-level-is-off
-  (is (= :off (log/level))))
+(deftest log-level-is-error
+  (is (= :error (log/level))))
 
 ;; (run-tests)
