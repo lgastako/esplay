@@ -20,9 +20,9 @@
   (let [old-events (:events old)
         new-events (:events new)
         projections (:projections new)]
-    (log/error :apply-all {:old-events old-events
-                           :new-events new-events
-                           :same (= old-events new-events)})
+    ;; (log/error :apply-all {:old-events old-events
+    ;;                        :new-events new-events
+    ;;                        :same (= old-events new-events)})
     (when-not (= old-events new-events)
       (let [added-events (find-new-events old-events new-events)]
         (doseq [event added-events]

@@ -6,16 +6,16 @@ clean:
 
 test:
 	lein test \
-		aggregate-test \
-		core-test \
-		errors-test \
-		event-test \
-		index-test \
-		play-test \
-		projection-test \
-		schema-test \
-		store-test \
-		validators-test
+		esplay.aggregate-test \
+		esplay.core-test \
+		esplay.errors-test \
+		esplay.event-test \
+		esplay.index-test \
+		esplay.play-test \
+		esplay.projection-test \
+		esplay.schemas-test \
+		esplay.store-test \
+		esplay.validators-test
 
 t: test
 
