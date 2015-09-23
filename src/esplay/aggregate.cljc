@@ -1,4 +1,5 @@
-(ns esplay.aggregate)
+(ns esplay.aggregate
+  (:refer-clojure :exclude [update]))
 
 (defn add [sval [agg-id agg]]
   (update-in sval [:aggregates] assoc agg-id agg))
